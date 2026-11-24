@@ -104,10 +104,13 @@ export async function validateReply(
 	}
 
 	if (parsedReply.inReplyTo === undefined) {
-		throw new Error("no In-Reply-To header found in reply message");
-	}
-
-	if (parsedReply.inReplyTo !== incomingMessage.messageId) {
+		// Email Routing sets In-Reply-To from the incoming email when the reply omits it.
+		// Without an incoming Message-ID there is nothing to thread the reply to.
+		if (incomingMessage.messageId === undefined) {
+			throw new Error("no In-Reply-To header found in reply message");
+		}
+		headersToPrepend.push(`In-Reply-To: ${incomingMessage.messageId}\r\n`);
+	} else if (parsedReply.inReplyTo !== incomingMessage.messageId) {
 		throw new Error("In-Reply-To does not match original Message-ID");
 	}
 

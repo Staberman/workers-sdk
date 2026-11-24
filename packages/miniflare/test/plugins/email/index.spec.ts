@@ -1175,7 +1175,9 @@ test("reply: disallowed header", async ({ expect }) => {
 	expect(await res.text()).toContain("invalid headers set");
 });
 
-test("reply: missing In-Reply-To", async ({ expect }) => {
+test("reply: derives In-Reply-To and References when omitted", async ({
+	expect,
+}) => {
 	const log = new TestLog();
 	const mf = new Miniflare({
 		log,
@@ -1228,8 +1230,25 @@ test("reply: missing In-Reply-To", async ({ expect }) => {
 		}
 	);
 
-	expect(await res.text()).toContain(
-		"no In-Reply-To header found in reply message"
+	expect(await res.text()).toBe("Worker successfully processed email");
+	expect(res.status).toBe(200);
+
+	const replyLog = log
+		.logsAtLevel(LogLevel.INFO)
+		.find((message) =>
+			message.startsWith(
+				"Email handler replied to sender with the following message:"
+			)
+		);
+	expect(replyLog).toBeDefined();
+	const file = replyLog?.match(/^ {2}(.+)$/m)?.[1];
+	expect(file).toBeDefined();
+	const fileContent = await readFile(String(file), "utf-8");
+	expect(fileContent).toMatch(
+		/^In-Reply-To: <im-a-random-message-id@example\.com>$/m
+	);
+	expect(fileContent).toMatch(
+		/^References: <im-a-random-message-id@example\.com>$/m
 	);
 });
 
